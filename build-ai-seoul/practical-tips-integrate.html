@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Practical Integration Tips with Gemini</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <style>
+        /* === CSS CUSTOM PROPERTIES (TERMINAL BLUE THEME) === */
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-card: #1c2129;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #4493f8;
+            --accent-dim: rgba(68, 147, 248, 0.15);
+            --accent-glow: rgba(68, 147, 248, 0.4);
+            --accent-bright: #58a6ff;
+            --border: #30363d;
+            --font-mono: 'JetBrains Mono', monospace;
+            --title-size: clamp(2.2rem, 5.5vw, 4rem);
+            --h2-size: clamp(1.6rem, 4vw, 2.8rem);
+            --h3-size: clamp(1.2rem, 2.8vw, 2rem);
+            --body-size: clamp(0.9rem, 1.8vw, 1.35rem);
+            --small-size: clamp(0.8rem, 1.3vw, 1.05rem);
+            --code-size: clamp(0.6rem, 1vw, 0.9rem);
+            --slide-padding: clamp(1.5rem, 4vw, 4rem);
+            --content-gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.6s;
+        }
+
+        /* === RESET === */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* === VIEWPORT BASE (MANDATORY) === */
+        html,
+        body {
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        html {
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-height: 100%;
+            overflow: hidden;
+            padding: var(--slide-padding);
+        }
+
+        img,
+        .image-container {
+            max-width: 100%;
+            max-height: min(50vh, 400px);
+            object-fit: contain;
+        }
+
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 3vw, 2rem);
+                --content-gap: clamp(0.4rem, 1.5vw, 1rem);
+                --title-size: clamp(1.25rem, 4.5vw, 2.5rem);
+                --h2-size: clamp(1rem, 3vw, 1.75rem);
+            }
+        }
+
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
+                --content-gap: clamp(0.3rem, 1vw, 0.75rem);
+                --title-size: clamp(1.1rem, 4vw, 2rem);
+                --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
+            }
+
+            .nav-dots,
+            .decorative {
+                display: none;
+            }
+        }
+
+        @media (max-height: 500px) {
+            :root {
+                --slide-padding: clamp(0.4rem, 2vw, 1rem);
+                --title-size: clamp(1rem, 3.5vw, 1.5rem);
+                --body-size: clamp(0.65rem, 1vw, 0.85rem);
+            }
+        }
+
+        @media (max-width: 600px) {
+            :root {
+                --title-size: clamp(1.25rem, 7vw, 2.5rem);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+
+            html {
+                scroll-behavior: auto;
+            }
+        }
+
+        /* === GLOBAL STYLES === */
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: var(--body-size);
+            line-height: 1.5;
+        }
+
+        /* === SCANLINE EFFECT === */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px,
+                    rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px);
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* === ANIMATIONS === */
+        .reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                transform var(--duration-normal) var(--ease-out-expo);
+        }
+
+        .slide.visible .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reveal:nth-child(2) {
+            transition-delay: 0.1s;
+        }
+
+        .reveal:nth-child(3) {
+            transition-delay: 0.2s;
+        }
+
+        .reveal:nth-child(4) {
+            transition-delay: 0.25s;
+        }
+
+        .reveal:nth-child(5) {
+            transition-delay: 0.3s;
+        }
+
+        /* === PROGRESS BAR === */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: var(--accent);
+            z-index: 1000;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        /* === NAV DOTS === */
+        .nav-dots {
+            position: fixed;
+            right: clamp(0.5rem, 1.5vw, 1.5rem);
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--border);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 0;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 6px var(--accent-glow);
+            transform: scale(1.4);
+        }
+
+        /* === SLIDE TYPES === */
+
+        /* Title Slide */
+        .title-slide {
+            background: radial-gradient(ellipse at 30% 70%, rgba(68, 147, 248, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 30%, rgba(68, 147, 248, 0.05) 0%, transparent 50%),
+                var(--bg-primary);
+        }
+
+        .title-slide .slide-content {
+            align-items: center;
+            text-align: center;
+            gap: var(--content-gap);
+        }
+
+        .title-slide h1 {
+            font-size: var(--title-size);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .title-slide .subtitle {
+            font-size: var(--h3-size);
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .title-slide .prompt-line {
+            color: var(--text-secondary);
+            font-size: var(--small-size);
+            margin-top: clamp(0.5rem, 2vh, 2rem);
+        }
+
+        .title-slide .prompt-line span {
+            color: var(--accent);
+        }
+
+        /* Section Divider */
+        .section-slide {
+            background: var(--bg-primary);
+            border-left: 4px solid var(--accent);
+        }
+
+        .section-slide .slide-content {
+            gap: clamp(0.5rem, 1.5vh, 1rem);
+        }
+
+        .section-slide .section-num {
+            font-size: var(--small-size);
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+        }
+
+        .section-slide h2 {
+            font-size: var(--title-size);
+            font-weight: 800;
+        }
+
+        .section-slide .section-desc {
+            font-size: var(--body-size);
+            color: var(--text-secondary);
+            max-width: 600px;
+            font-style: italic;
+        }
+
+        /* Tip Slide */
+        .tip-slide .slide-content {
+            gap: var(--content-gap);
+            width: 75%;
+        }
+
+        .tip-num {
+            font-size: var(--small-size);
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            padding: 2px 8px;
+            border: 1px solid var(--accent-dim);
+            display: inline-block;
+            width: fit-content;
+        }
+
+        .tip-slide h2 {
+            font-size: var(--h2-size);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: clamp(0.3rem, 0.8vh, 0.6rem);
+        }
+
+        .tip-slide .tip-desc {
+            font-size: var(--body-size);
+            color: var(--text-secondary);
+            max-width: 800px;
+            line-height: 1.6;
+        }
+
+        /* Code blocks */
+        .tip-slide pre {
+            background: var(--bg-secondary) !important;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: clamp(0.5rem, 1.2vw, 1rem) !important;
+            font-size: var(--code-size) !important;
+            max-height: min(55vh, 450px);
+            overflow: auto;
+            max-width: min(85%, 750px);
+            position: relative;
+            overscroll-behavior: contain;
+        }
+
+        .tip-slide pre::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 6px;
+            right: 10px;
+            font-size: clamp(0.5rem, 0.7vw, 0.65rem);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .tip-slide code {
+            font-family: var(--font-mono) !important;
+            font-size: var(--code-size) !important;
+            line-height: 1.5;
+        }
+
+        .hljs {
+            background: transparent !important;
+        }
+
+        /* Links on slides */
+        .tip-link {
+            color: var(--accent);
+            font-size: var(--small-size);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .tip-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        .tip-link::before {
+            content: '→ ';
+        }
+
+        /* Recap / Outline Slide */
+        .recap-slide .slide-content {
+            gap: clamp(0.3rem, 0.8vh, 0.6rem);
+        }
+
+        .recap-slide h2 {
+            font-size: var(--h2-size);
+            color: var(--accent);
+            margin-bottom: clamp(0.3rem, 1vh, 0.8rem);
+        }
+
+        .recap-list {
+            list-style: disc;
+            columns: 2;
+            column-gap: clamp(1rem, 3vw, 3rem);
+            font-size: var(--small-size);
+            color: var(--text-secondary);
+            padding-left: 1.2em;
+        }
+
+        .recap-list li {
+            margin-bottom: clamp(0.15rem, 0.5vh, 0.35rem);
+        }
+
+        .recap-list li::marker {
+            color: var(--accent);
+        }
+
+        /* Thank You Slide */
+        .thankyou-slide .slide-content {
+            align-items: center;
+            text-align: center;
+            gap: var(--content-gap);
+        }
+
+        .thankyou-slide h2 {
+            font-size: var(--title-size);
+            font-weight: 800;
+        }
+
+        /* Blinking cursor */
+        .cursor::after {
+            content: '█';
+            color: var(--accent);
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        /* Grid background for select slides */
+        .grid-bg {
+            background-image:
+                linear-gradient(rgba(68, 147, 248, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(68, 147, 248, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        /* === MULTIMODAL DIAGRAM (Tip 03) === */
+        .modality-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: clamp(0.4rem, 1vw, 0.8rem);
+            max-width: min(90%, 700px);
+        }
+
+        .modality-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: clamp(0.4rem, 1vw, 0.8rem);
+            text-align: center;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .modality-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 12px var(--accent-dim);
+        }
+
+        .modality-icon {
+            font-size: clamp(1.2rem, 2.5vw, 2rem);
+            margin-bottom: clamp(0.2rem, 0.5vh, 0.4rem);
+        }
+
+        .modality-label {
+            font-size: var(--small-size);
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 600px) {
+            .modality-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* === MEDIA PLACEHOLDER === */
+        .media-placeholder {
+            background: var(--bg-secondary);
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: clamp(1rem, 3vw, 2rem);
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: var(--small-size);
+            max-width: min(90%, 600px);
+            max-height: min(35vh, 250px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(0.3rem, 0.8vh, 0.5rem);
+            transition: border-color 0.3s ease;
+        }
+
+        .media-placeholder:hover {
+            border-color: var(--accent);
+        }
+
+        .media-placeholder .placeholder-icon {
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
+            opacity: 0.6;
+        }
+
+        .media-placeholder .placeholder-label {
+            font-size: var(--small-size);
+            color: var(--text-secondary);
+        }
+
+        /* === DATA TABLE (Gemma models etc.) === */
+        .data-table {
+            border-collapse: collapse;
+            font-size: var(--small-size);
+            max-width: min(90%, 700px);
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: clamp(0.2rem, 0.5vw, 0.4rem) clamp(0.4rem, 1vw, 0.8rem);
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .data-table th {
+            background: var(--bg-secondary);
+            color: var(--accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: clamp(0.6rem, 0.9vw, 0.8rem);
+        }
+
+        .data-table td {
+            color: var(--text-secondary);
+        }
+
+        /* === PATH DISPLAY === */
+        .path-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: clamp(0.3rem, 0.8vw, 0.6rem) clamp(0.5rem, 1.2vw, 1rem);
+            font-size: var(--code-size);
+            color: var(--text-secondary);
+            max-width: min(90%, 700px);
+        }
+
+        .path-box .path-label {
+            color: var(--accent);
+            font-weight: 600;
+            font-size: clamp(0.55rem, 0.8vw, 0.75rem);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: clamp(0.1rem, 0.3vh, 0.2rem);
+        }
+
+        .path-box code {
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    <nav class="nav-dots" id="navDots"></nav>
+
+    <!-- === TITLE SLIDE === -->
+    <section class="slide title-slide" id="slide-title">
+        <div class="slide-content">
+            <h1 class="reveal">Practical Integration Tips<br>with <span style="color:var(--accent)">Gemini</span></h1>
+            <p class="prompt-line reveal">Patrick Loeber, Member of Technical Staff @ Google DeepMind</p>
+        </div>
+    </section>
+    <!-- === ABOUT ME SLIDE === -->
+    <section class="slide tip-slide" id="slide-about">
+        <div class="slide-content">
+            <h2 class="reveal">// about me<span class="cursor"></span></h2>
+            <ul class="recap-list reveal" style="columns: 1; list-style: none; padding-left: 0;">
+                <li>🇩🇪 Based in Berlin</li>
+                <li>💻 Software Engineer (Python & C++)</li>
+                <li>🚀 Worked in startup scene</li>
+                <li>✨ Now Gemini API & AI Studio</li>
+                <li>👉 Follow me @patloeber / patloeber.com</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- === OUTLINE SLIDE === -->
+    <section class="slide recap-slide grid-bg" id="slide-outline">
+        <div class="slide-content">
+            <h2 class="reveal">// what you should get out of this session<span class="cursor"></span></h2>
+            <ol class="recap-list reveal" style="columns: 1; list-style: decimal;">
+                <li>20 Tips (agents, prompting, and more)</li>
+                <li>Learn about models</li>
+                <li>Learn about tools</li>
+                <li>Live demos</li>
+                <li>Have fun!</li>
+                <li>Grab some stickers! :)</li>
+            </ol>
+        </div>
+    </section>
+
+    <!-- === SECTION I: MODEL FAMILY === -->
+    <section class="slide section-slide grid-bg" id="slide-s1">
+        <div class="slide-content">
+            <div class="section-num reveal">Section I</div>
+            <h2 class="reveal">The Gemini 3<br>Model Family</h2>
+            <p class="section-desc reveal">Matching the engine to the workload.</p>
+        </div>
+    </section>
+
+    <!-- TIP 1: Use the Right Model (Start with Flash) -->
+    <section class="slide tip-slide" id="slide-tip1">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 01</div>
+            <h2 class="reveal">Use the Right Model: Start with Flash</h2>
+            <p class="tip-desc reveal">Don't use a "sledgehammer" to crack a nut. Flash is the industry "sweet spot."
+                Build on Flash and only "promote" failing tasks to Pro.</p>
+            <pre class="reveal" data-lang="python"><code class="language-python">from google import genai
+
+client = genai.Client()
+
+# Start with Flash
+response = client.models.generate_content(
+    model="gemini-3-flash-preview",
+    contents="Extract the data...",
+)
+
+# Only promote to Pro if needed
+# model="gemini-3.1-pro-preview"</code></pre>
+            <a class="tip-link reveal" href="https://deepmind.google/models/gemini/flash/" target="_blank">Flash vs Pro
+                performance</a>
+            <a class="tip-link reveal"
+                href="https://dev.to/googleai/gemini-31-flash-lite-developer-guide-and-use-cases-1hh"
+                target="_blank">Flash-Lite use cases</a>
+            <a class="tip-link reveal" href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank">Flash is 4x
+                cheaper / Flash-Lite 8x cheaper than Pro</a>
+        </div>
+    </section>
+
+    <!-- TIP 2: Route with Flash-Lite -->
+    <section class="slide tip-slide" id="slide-tip2">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 02</div>
+            <h2 class="reveal">Route with Flash-Lite</h2>
+            <p class="tip-desc reveal">Use Flash-Lite as a "Bouncer." Classify intent to route queries.</p>
+            <pre class="reveal" data-lang="python"><code class="language-python">response = client.models.generate_content(
+    model="gemini-3.1-flash-lite-preview",
+    contents=user_input,
+    config={
+        "system_instruction": CLASSIFIER_SYSTEM_PROMPT,
+        "response_mime_type": "application/json",
+        "response_json_schema": response_schema
+    },
+)</code></pre>
+            <a class="tip-link reveal"
+                href="https://github.com/google-gemini/gemini-cli/blob/main/packages/core/src/routing/strategies/classifierStrategy.ts"
+                target="_blank">Gemini CLI — classifierStrategy.ts</a>
+        </div>
+    </section>
+
+    <!-- TIP 3: Multimodality & Multilinguality -->
+    <section class="slide tip-slide" id="slide-tip3">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 03</div>
+            <h2 class="reveal">Leverage Multimodality & Multilinguality</h2>
+            <p class="tip-desc reveal">Gemini natively understands text, images, audio, video, and code — in 100+
+                languages. Combine modalities in a single call for cross-modal reasoning.</p>
+            <div class="modality-grid reveal">
+                <div class="modality-card">
+                    <div class="modality-icon">📝</div>
+                    <div class="modality-label">Text</div>
+                </div>
+                <div class="modality-card">
+                    <div class="modality-icon">🖼️</div>
+                    <div class="modality-label">Images</div>
+                </div>
+                <div class="modality-card">
+                    <div class="modality-icon">🎧</div>
+                    <div class="modality-label">Audio</div>
+                </div>
+                <div class="modality-card">
+                    <div class="modality-icon">🎬</div>
+                    <div class="modality-label">Video</div>
+                </div>
+            </div>
+            <pre class="reveal" data-lang="python"><code class="language-python">photo = client.files.upload(file="product.jpg")
+
+response = client.models.generate_content(
+    model="gemini-3-flash-preview",
+    contents=[photo, "이 제품을 한국어로 설명해주세요."],
+)</code></pre>
+        </div>
+    </section>
+
+
+    <!-- === SECTION II: PROMPTING & CONTEXT MANAGEMENT === -->
+    <section class="slide section-slide grid-bg" id="slide-s2">
+        <div class="slide-content">
+            <div class="section-num reveal">Section II</div>
+            <h2 class="reveal">Prompting &<br>Context Management</h2>
+            <p class="section-desc reveal">How to structure instructions so the model actually listens.</p>
+        </div>
+    </section>
+    <!-- TIP: Markdown Format -->
+    <section class="slide tip-slide" id="slide-tip4">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 04</div>
+            <h2 class="reveal">Use Markdown Format w/ Sections</h2>
+            <p class="tip-desc reveal">Gemini is trained on structured data. Using Markdown helps distinguish between
+                instructions, context, and tasks.</p>
+            <pre class="reveal" data-lang="text"><code class="language-text"># Role
+You are a helpful assistant.
+
+# Constraints
+1. Be objective.
+2. Cite sources.
+
+# Context
+...
+
+# Task
+[Insert the specific user request here]</code></pre>
+        </div>
+    </section>
+
+    <!-- TIP 4: Instructions at End -->
+    <section class="slide tip-slide" id="slide-tip5">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 05</div>
+            <h2 class="reveal">Put Instructions at the End of Long Context</h2>
+            <p class="tip-desc reveal">"Recency bias" is real. Place your PDF or codebase first, and your question at
+                the very bottom.</p>
+            <pre class="reveal" data-lang="python"><code class="language-python">from google import genai
+
+client = genai.Client()
+
+sample_file = client.files.upload(file="large_file.pdf")
+
+response = client.models.generate_content(
+    model="gemini-3-flash-preview",
+    contents=[
+        "Here is a PDF document about &lt;topic&gt;:",
+        sample_file,
+        "Summarize this document",
+    ],
+)
+
+print(response.text)</code></pre>
+        </div>
+    </section>
+
+    <!-- TIP 5: Give a Map -->
+    <section class="slide tip-slide" id="slide-tip6">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 06</div>
+            <h2 class="reveal">Give a Map, Not a Manual</h2>
+            <p class="tip-desc reveal">Keep instructions short. Use a "Table of Contents" that points the agent to
+                deeper sources of truth.</p>
+            <pre class="reveal" data-lang="text"><code class="language-text">You are an autonomous developer. Follow the repository map.
+Do not guess—read the corresponding doc first.
+
+REPOSITORY MAP:
+Gemini.md
+docs/
+├── STYLE_GUIDE.md: Naming conventions and linting rules.
+├── ARCHITECTURE.md: How to structure new services and handle DI.
+├── AUTH_FLOW.md: The standard for handling JWTs and session logic.
+
+TASK:
+Implement a new 'Password Reset' endpoint.
+Refer to /docs/ARCHITECTURE.md and /docs/AUTH_FLOW.md.</code></pre>
+            <a class="tip-link reveal" href="https://github.com/google-gemini/gemini-skills" target="_blank">Example:
+                Skills</a>
+        </div>
+    </section>
+
+
+
+    <!-- TIP 6: Strict Grounding -->
+    <section class="slide tip-slide" id="slide-tip7">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 07</div>
+            <h2 class="reveal">Enforce Strict Grounding</h2>
+            <p class="tip-desc reveal">Add a "negative constraint" to prevent hallucination when working with provided
+                context.</p>
+            <pre class="reveal" data-lang="text"><code class="language-text">Answer ONLY using the provided text.
+If not present, say 'unsupported'.
+Do not use outside knowledge.</code></pre>
+        </div>
+    </section>
+
+    <!-- === SECTION III: RELIABLE STRUCTURED OUTPUT === -->
+    <section class="slide section-slide grid-bg" id="slide-s3">
+        <div class="slide-content">
+            <div class="section-num reveal">Section III</div>
+            <h2 class="reveal">Reliable Structured<br>Output</h2>
+            <p class="section-desc reveal">Ensuring your JSON is production-ready.</p>
+        </div>
+    </section>
+
+
+    <!-- TIP: JSON Schema -->
+    <section class="slide tip-slide" id="slide-tip8">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 08</div>
+            <h2 class="reveal">Clear JSON Schema Descriptions & Types</h2>
+            <p class="tip-desc reveal">Use the description field in your schema for instructions. Use strong typing
+                (integer, string, enum) whenever possible.</p>
+            <pre class="reveal" data-lang="python"><code class="language-python">class SupportTicket(BaseModel):
+    summary: str = Field(
+        description="A concise summary of the user's technical issue."
+    )
+    category: Literal["billing", "technical", "other"] = Field(
+        description="The bucket this issue falls into."
+    )
+    impact_score: int = Field(
+        description="A severity score from 1 (low) to 10 (high)."
+    )
+
+response = client.models.generate_content(
+    model="gemini-3-flash-preview",
+    contents=prompt,
+    config={
+        "response_mime_type": "application/json",
+        "response_json_schema": SupportTicket.model_json_schema(),
+    },
+)</code></pre>
+        </div>
+    </section>
+
+    <!-- TIP 7: Few-Shot Examples -->
+    <section class="slide tip-slide" id="slide-tip9">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 09</div>
+            <h2 class="reveal">Prioritize Few-Shot Examples over Long Instructions</h2>
+            <p class="tip-desc reveal">Clear examples of "getting it right" often outperform lengthy written
+                instructions.</p>
+            <pre class="reveal" data-lang="text"><code class="language-text">--- EXAMPLES ---
+
+**Example 1 (Strategic Planning):**
+*User Prompt:* "How should I architect the data pipeline?"
+*Your JSON Output:*
+{
+  "reasoning": "High-level architectural design...",
+  "model_choice": "${PRO_MODEL}"
+}
+
+**Example 2 (Simple Tool Use):**
+*User Prompt:* "list the files in the current directory"
+*Your JSON Output:*
+{
+  "reasoning": "Direct command requiring a single tool call.",
+  "model_choice": "${FLASH_MODEL}"
+}</code></pre>
+            <a class="tip-link reveal"
+                href="https://github.com/google-gemini/gemini-cli/blob/main/packages/core/src/routing/strategies/classifierStrategy.ts"
+                target="_blank">Gemini CLI — classifierStrategy.ts</a>
+        </div>
+    </section>
+
+    <!-- TIP 8: Trust but Verify -->
+    <section class="slide tip-slide" id="slide-tip10">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 10</div>
+            <h2 class="reveal">Trust but Verify</h2>
+            <p class="tip-desc reveal">Structured output guarantees valid JSON (syntax), not valid logic (semantics).
+                Always validate values in your code.</p>
+            <pre class="reveal" data-lang="python"><code class="language-python">def process_gemini_response(json_response):
+    try:
+        # STEP A: Syntactic Validation (Is it valid JSON?)
+        update = InventoryUpdate.model_validate_json(json_response)
+
+        # STEP B: Semantic Validation (Is the data correct?)
+        if update.product_id not in VALID_PRODUCT_IDS:
+            raise ValueError(f"Product ID {update.product_id} not in DB.")
+
+        if update.new_stock_level < 0:
+            raise ValueError("Stock level cannot be negative.")
+
+        print(f"✅ Successfully updated Product {update.product_id}")
+
+    except ValidationError as e:
+        print(f"❌ Syntax Error: bad JSON structure: {e}")
+    except ValueError as e:
+        print(f"⚠️ Semantic Error: hallucinated data: {e}")</code></pre>
+        </div>
+    </section>
+
+    <!-- === SECTION IV: GENMEDIA MODELS === -->
+    <section class="slide section-slide grid-bg" id="slide-s4">
+        <div class="slide-content">
+            <div class="section-num reveal">Section IV</div>
+            <h2 class="reveal">GenMedia<br>Models</h2>
+            <p class="section-desc reveal">Image, video, audio, and music generation as a developer workflow.</p>
+        </div>
+    </section>
+
+    <!-- TIP 9: Nano Banana -->
+    <section class="slide tip-slide" id="slide-tip11">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 11</div>
+            <h2 class="reveal">Nano Banana: Character Consistency & Search</h2>
+            <p class="tip-desc reveal">Gemini-native image generation. Leverage character consistency across frames and
+                use Google Search grounding for reference-accurate visuals.</p>
+            <img class="reveal" src="nano-banana.png" alt="Nano Banana image generation"
+                style="max-height: min(45vh, 380px); max-width: min(85%, 750px); border: 1px solid var(--border); border-radius: 6px; align-self: flex-start;">
+            <a class="tip-link reveal" href="https://aistudio.google.com" target="_blank">Try it in AI Studio</a>
+        </div>
+    </section>
+
+    <!-- TIP 10: Veo -->
+    <section class="slide tip-slide" id="slide-tip12">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 12</div>
+            <h2 class="reveal">Veo: Detailed Prompting for Video</h2>
+            <p class="tip-desc reveal">Be cinematic in your prompts. Specify camera movement, lighting, mood, and
+                duration. Veo responds best to rich, descriptive language.</p>
+            <iframe class="reveal" src="https://drive.google.com/file/d/1aVY03iYsmuD7eCmIzGES6UdH6psjfSMS/preview"
+                style="width: min(90%, 800px); height: min(55vh, 450px); border: 1px solid var(--border); border-radius: 6px;"
+                allow="autoplay" allowfullscreen></iframe>
+            <a class="tip-link reveal" href="https://aistudio.google.com" target="_blank">Try it in AI Studio</a>
+        </div>
+    </section>
+
+    <!-- TIP 11: TTS -->
+    <section class="slide tip-slide" id="slide-tip13">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 13</div>
+            <h2 class="reveal">TTS: Learn Correct Prompting</h2>
+            <p class="tip-desc reveal">Text-to-Speech with Gemini is prompt-driven. Control pace, emotion, and emphasis
+                through natural language instructions — no SSML needed.</p>
+            <iframe class="reveal" src="https://www.youtube.com/embed/M6YOkUruqr8"
+                style="width: min(90%, 800px); height: min(55vh, 450px); border: 1px solid var(--border); border-radius: 6px;"
+                allow="autoplay; encrypted-media" allowfullscreen></iframe>
+            <a class="tip-link reveal" href="https://www.fofr.ai/gemini-tts-guide" target="_blank">TTS prompting
+                guide</a>
+        </div>
+    </section>
+
+    <!-- TIP 12: Lyria -->
+    <section class="slide tip-slide" id="slide-tip14">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 14</div>
+            <h2 class="reveal">Lyria: Have Fun with It!</h2>
+            <p class="tip-desc reveal">Generate music and audio with Lyria. Perfect for background music in demos,
+                podcasts, or creative projects. Describe the mood and genre — Lyria composes.</p>
+            <img class="reveal" src="lyria.png" alt="Lyria music generation"
+                style="max-height: min(45vh, 380px); max-width: min(85%, 750px); border: 1px solid var(--border); border-radius: 6px; align-self: flex-start;">
+            <a class="tip-link reveal" href="https://gemini.google.com/" target="_blank">Create music with
+                Gemini</a>
+        </div>
+    </section>
+
+    <!-- === SECTION V: LIVE API === -->
+    <section class="slide section-slide grid-bg" id="slide-s5">
+        <div class="slide-content">
+            <div class="section-num reveal">Section V</div>
+            <h2 class="reveal">Live API</h2>
+            <p class="section-desc reveal">Real-time, bidirectional streaming with Gemini.</p>
+        </div>
+    </section>
+
+    <!-- TIP 13: Live API -->
+    <section class="slide tip-slide" id="slide-tip15">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 15</div>
+            <h2 class="reveal">Build Real-Time, Multilingual Experiences</h2>
+            <p class="tip-desc reveal">The Live API enables bidirectional audio/video streaming over WebSocket. Build
+                voice assistants, real-time translators, and interactive tutors.</p>
+            <iframe class="reveal" src="https://www.youtube.com/embed/XV5bhkDpL7U"
+                style="width: min(90%, 800px); height: min(55vh, 450px); border: 1px solid var(--border); border-radius: 6px;"
+                allow="autoplay; encrypted-media" allowfullscreen></iframe>
+            <a class="tip-link reveal" href="https://ai.google.dev/gemini-api/docs/live" target="_blank">Live API
+                docs</a>
+        </div>
+    </section>
+
+    <!-- === SECTION VI: EMBEDDINGS, GEMMA & MORE === -->
+    <section class="slide section-slide grid-bg" id="slide-s6">
+        <div class="slide-content">
+            <div class="section-num reveal">Section VI</div>
+            <h2 class="reveal">Embeddings, Gemma 4<br>& More</h2>
+            <p class="section-desc reveal">Rounding out the toolkit.</p>
+        </div>
+    </section>
+
+    <!-- TIP 14: Gemini Embeddings 2 -->
+    <section class="slide tip-slide" id="slide-tip16">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 16</div>
+            <h2 class="reveal">Simplify RAG with Gemini Embeddings 2</h2>
+            <p class="tip-desc reveal">A single embedding model for text, images, video, audio, and documents. Native
+                multimodal — no
+                separate pipelines needed.</p>
+            <iframe class="reveal" src="https://drive.google.com/file/d/1n-3YkhzPfZxND7-_JrIpDXyuZD0BMk0M/preview"
+                style="width: min(90%, 800px); height: min(55vh, 450px); border: 1px solid var(--border); border-radius: 6px;"
+                allow="autoplay" allowfullscreen></iframe>
+            <a class="tip-link reveal" href="https://ai.google.dev/gemini-api/docs/embeddings" target="_blank">Gemini
+                Embeddings docs</a>
+            <a class="tip-link reveal" href="http://ai.studio/apps/bundled/multimodal_search" target="_blank">Multimodal
+                Search in AI Studio</a>
+
+        </div>
+    </section>
+
+    <!-- TIP 15: Gemma 4 -->
+    <section class="slide tip-slide" id="slide-tip17">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 17</div>
+            <h2 class="reveal">Run Local Agents with Gemma 4</h2>
+            <p class="tip-desc reveal">Open-weight models you can run locally. Perfect for privacy-sensitive workloads
+                and offline agents.</p>
+            <img class="reveal" src="pi-agent.png" alt="Pi agent with Gemma 4"
+                style="max-height: min(40vh, 350px); max-width: min(85%, 750px); border: 1px solid var(--border); border-radius: 6px; align-self: flex-start;">
+            <table class="data-table reveal">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Architecture</th>
+                        <th>Context</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Gemma 4 E2B</td>
+                        <td>Dense</td>
+                        <td>128K tokens</td>
+                    </tr>
+                    <tr>
+                        <td>Gemma 4 E4B</td>
+                        <td>Dense</td>
+                        <td>128K tokens</td>
+                    </tr>
+                    <tr>
+                        <td>Gemma 4 26B A4B</td>
+                        <td>MoE (4B active)</td>
+                        <td>256K tokens</td>
+                    </tr>
+                    <tr>
+                        <td>Gemma 4 31B</td>
+                        <td>Dense</td>
+                        <td>256K tokens</td>
+                    </tr>
+                </tbody>
+            </table>
+            <a class="tip-link reveal" href="https://patloeber.com/gemma-4-pi-agent/" target="_blank">Local agent
+                guide</a>
+        </div>
+    </section>
+
+    <!-- TIP 16: AI Studio Build -->
+    <section class="slide tip-slide" id="slide-tip18">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 18</div>
+            <h2 class="reveal">Prototype Fast with AI Studio Build</h2>
+            <p class="tip-desc reveal">Describe your app in natural language — AI Studio Build scaffolds a working
+                frontend + Gemini backend in minutes.</p>
+            <img class="reveal" src="aistudio.png" alt="AI Studio Build"
+                style="max-height: min(45vh, 380px); max-width: min(85%, 750px); border: 1px solid var(--border); border-radius: 6px; align-self: flex-start;">
+            <a class="tip-link reveal" href="https://aistudio.google.com/build" target="_blank">ai.studio/build</a>
+        </div>
+    </section>
+
+    <!-- TIP 17: Interactions API -->
+    <section class="slide tip-slide" id="slide-tip19">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 19</div>
+            <h2 class="reveal">Build Agents with the Interactions API</h2>
+            <p class="tip-desc reveal">The recommended way to build multi-turn, tool-using agents. Handles conversation
+                state, tool execution loops, and streaming — so you don't have to.</p>
+            <pre class="reveal" data-lang="python"><code class="language-python">from google import genai
+
+client = genai.Client()
+
+# First turn
+interaction = client.interactions.create(
+    model="gemini-3-flash-preview",
+    input="What is the capital of France?"
+)
+print(interaction.outputs[-1].text)
+
+# Second turn — server remembers context
+interaction2 = client.interactions.create(
+    model="gemini-3-flash-preview",
+    input="What language do they speak there?",
+    previous_interaction_id=interaction.id
+)
+print(interaction2.outputs[-1].text)</code></pre>
+            <a class="tip-link reveal" href="https://ai.google.dev/gemini-api/docs/interactions"
+                target="_blank">Interactions API docs</a>
+        </div>
+    </section>
+
+    <!-- TIP 18: Antigravity -->
+    <section class="slide tip-slide" id="slide-tip20">
+        <div class="slide-content">
+            <div class="tip-num reveal">Tip 20</div>
+            <h2 class="reveal">Use Gemini API Skills with Antigravity</h2>
+            <p class="tip-desc reveal">Teach your AI coding agent new capabilities with reusable skill files. Skills are
+                Markdown instruction sets that extend what the agent can do.</p>
+            <div class="path-box reveal">
+                <div class="path-label">Workspace Skill</div>
+                <code>&lt;workspace-root&gt;/.agent/skills/&lt;skill-folder&gt;/</code>
+            </div>
+            <div class="path-box reveal" style="margin-top: clamp(0.2rem, 0.5vh, 0.4rem)">
+                <div class="path-label">Global Skill</div>
+                <code>~/.gemini/antigravity/skills/&lt;skill-folder&gt;/</code>
+            </div>
+            <a class="tip-link reveal" href="https://github.com/google-gemini/gemini-skills" target="_blank">Gemini
+                Skills Repository</a>
+            <a class="tip-link reveal" href="https://antigravity.google/" target="_blank">Google Antigravity</a>
+        </div>
+    </section>
+
+    <!-- === RECAP SLIDE === -->
+    <section class="slide recap-slide grid-bg" id="slide-recap">
+        <div class="slide-content">
+            <h2 class="reveal">// recap<span class="cursor"></span></h2>
+            <ul class="recap-list reveal">
+                <li><strong>The Gemini 3 Model Family</strong> (Tips 1–3)</li>
+                <li><strong>Prompting & Context Management</strong> (Tips 4–7)</li>
+                <li><strong>Reliable Structured Output</strong> (Tips 8–10)</li>
+                <li>Nano Banana</li>
+                <li>Veo Video Generation</li>
+                <li>TTS Prompting</li>
+                <li style="break-after: column;">Lyria Music</li>
+                <li>Live API</li>
+                <li>Gemini Embeddings 2</li>
+                <li>Gemma 4 Local Agents</li>
+                <li>AI Studio Build</li>
+                <li>Interactions API</li>
+                <li>Antigravity Skills</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- === SELFIE SLIDE === -->
+    <section class="slide thankyou-slide" id="slide-selfie">
+        <div class="slide-content">
+            <h2 class="reveal" style="color: var(--accent)">take a selfie :)</h2>
+        </div>
+    </section>
+
+    <section class="slide thankyou-slide" id="slide-repo">
+        <div class="slide-content">
+            <h2 class="reveal" style="color: var(--accent)">Thank you!<span class="cursor"></span></h2>
+            <p class="reveal"
+                style="color: var(--text-secondary); font-size: var(--body-size); margin-bottom: clamp(0.3rem, 1vh, 0.8rem); align-self: center;">
+                Find these slides:</p>
+            <img class="reveal" src="talks-repo.png" alt="QR code to talks repo"
+                style="max-height: min(40vh, 340px); border-radius: 6px; align-self: center;">
+            <a class="tip-link reveal" href="https://github.com/patrickloeber/talks" target="_blank"
+                style="align-self: center;">github.com/patrickloeber/talks</a>
+            <p class="reveal"
+                style="color: var(--text-secondary); font-size: var(--body-size); margin-top: clamp(0.3rem, 1vh, 0.8rem); align-self: center;">
+                x.com/patloeber</p>
+        </div>
+    </section>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>
+        /* === HIGHLIGHT.JS INIT === */
+        hljs.highlightAll();
+
+        /* === SLIDE PRESENTATION CONTROLLER === */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.setupProgressBar();
+                this.setupNavDots();
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            const idx = Array.from(this.slides).indexOf(entry.target);
+                            if (idx !== -1) { this.currentSlide = idx; this.updateUI(); }
+                        }
+                    });
+                }, { threshold: 0.5 });
+                this.slides.forEach(s => observer.observe(s));
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (['ArrowDown', 'ArrowRight', 'Space', 'PageDown'].includes(e.code)) { e.preventDefault(); this.goTo(this.currentSlide + 1); }
+                    if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.code)) { e.preventDefault(); this.goTo(this.currentSlide - 1); }
+                    if (e.code === 'Home') { e.preventDefault(); this.goTo(0); }
+                    if (e.code === 'End') { e.preventDefault(); this.goTo(this.slides.length - 1); }
+                });
+            }
+
+            setupTouchNav() {
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; });
+                document.addEventListener('touchend', (e) => {
+                    const diff = startY - e.changedTouches[0].clientY;
+                    if (Math.abs(diff) > 50) { diff > 0 ? this.goTo(this.currentSlide + 1) : this.goTo(this.currentSlide - 1); }
+                });
+            }
+
+            setupWheelNav() {
+                let lastWheel = 0;
+                document.addEventListener('wheel', (e) => {
+                    const pre = e.target.closest('pre');
+                    if (pre && pre.scrollHeight > pre.clientHeight) {
+                        return; // Ignore if we are scrolling a code block
+                    }
+                    const now = Date.now();
+                    if (now - lastWheel < 800) return;
+                    lastWheel = now;
+                    e.deltaY > 0 ? this.goTo(this.currentSlide + 1) : this.goTo(this.currentSlide - 1);
+                }, { passive: true });
+            }
+
+            setupProgressBar() { this.progressBar = document.getElementById('progressBar'); }
+
+            setupNavDots() {
+                const nav = document.getElementById('navDots');
+                this.slides.forEach((_, i) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot'; dot.setAttribute('aria-label', `Slide ${i + 1}`);
+                    dot.addEventListener('click', () => this.goTo(i));
+                    nav.appendChild(dot);
+                });
+                this.dots = nav.querySelectorAll('.nav-dot');
+            }
+
+            goTo(idx) {
+                if (idx < 0 || idx >= this.slides.length) return;
+                this.currentSlide = idx;
+                this.slides[idx].scrollIntoView({ behavior: 'smooth' });
+                this.updateUI();
+            }
+
+            updateUI() {
+                const pct = ((this.currentSlide + 1) / this.slides.length) * 100;
+                if (this.progressBar) this.progressBar.style.width = pct + '%';
+                if (this.dots) this.dots.forEach((d, i) => d.classList.toggle('active', i === this.currentSlide));
+            }
+        }
+
+        new SlidePresentation();
+    </script>
+</body>
+
+</html>
